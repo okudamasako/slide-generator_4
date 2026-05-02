@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIスライド自動生成システム</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Arial, sans-serif;
+    background: #F0F4FF;
+    color: #1A1A1A;
+    min-height: 100vh;
+  }
+
+  /* ヘッダー */
+  header {
+    background: #1E2761;
+    padding: 0 40px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.05em;
+  }
+  .logo span { color: #4FC3F7; }
+  .header-badge {
+    font-size: 11px;
+    background: rgba(79,195,247,0.2);
+    color: #4FC3F7;
+    border: 1px solid rgba(79,195,247,0.4);
+    padding: 4px 12px;
+    border-radius: 100px;
+    letter-spacing: 0.06em;
+  }
+
+  /* メイン */
+  main {
+    max-width: 760px;
+    margin: 48px auto;
+    padding: 0 20px;
+  }
+
+  .hero {
+    text-align: center;
+    margin-bottom: 40px;
+  }
+  .hero h1 {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1E2761;
+    line-height: 1.4;
+    margin-bottom: 12px;
+  }
+  .hero p {
+    font-size: 15px;
+    color: #64748B;
+    line-height: 1.7;
+  }
+
+  /* カード */
+  .card {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid rgba(0,0,0,0.08);
+    padding: 32px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 12px rgba(30,39,97,0.06);
+  }
+
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1E2761;
+    letter-spacing: 0.08em;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #E8EEF8;
+  }
+
+  .field { margin-bottom: 18px; }
+  .field label {
+    display: block;
+    font-size: 13px;
+    font-weight: 700;
+    color: #1E2761;
+    margin-bottom: 6px;
+  }
+  .field label .req {
+    color: #E53E3E;
+    margin-left: 4px;
+    font-size: 11px;
+  }
+  .field input, .field textarea, .field select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1.5px solid #D0D8F0;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    color: #1A1A1A;
+    background: #FAFBFF;
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .field input:focus, .field textarea:focus, .field select:focus {
+    border-color: #1E2761;
+    background: #fff;
+  }
+  .field textarea { min-height: 88px; resize: vertical; line-height: 1.6; }
+
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  /* ステップ表示 */
+  .steps {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+  }
+  .step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-num {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: #E8EEF8;
+    color: #64748B;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.3s;
+  }
+  .step.active .step-num { background: #1E2761; color: #fff; }
+  .step.done .step-num { background: #00897B; color: #fff; }
+  .step-label { font-size: 11px; color: #64748B; text-align: center; }
+  .step.active .step-label { color: #1E2761; font-weight: 700; }
+  .step-line { flex: 1; height: 2px; background: #E8EEF8; margin-top: 13px; }
+  .step-line.done { background: #00897B; }
+
+  /* ボタン */
+  .btn-primary {
+    width: 100%;
+    padding: 14px;
+    background: #1E2761;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    letter-spacing: 0.03em;
+  }
+  .btn-primary:hover { background: #0D1B4B; transform: translateY(-1px); }
+  .btn-primary:active { transform: scale(0.99); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    width: 100%;
+    padding: 12px;
+    background: #fff;
+    color: #1E2761;
+    font-size: 14px;
+    font-weight: 700;
+    border: 1.5px solid #1E2761;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+    margin-top: 10px;
+  }
+  .btn-secondary:hover { background: #F0F4FF; }
+
+  /* 構成プレビュー */
+  .preview-box {
+    background: #F8FAFF;
+    border: 1.5px solid #D0D8F0;
+    border-radius: 10px;
+    padding: 20px;
+    font-size: 13px;
+    line-height: 1.9;
+    color: #1A1A1A;
+    white-space: pre-wrap;
+    max-height: 320px;
+    overflow-y: auto;
+    margin-bottom: 16px;
+  }
+
+  /* ダウンロードエリア */
+  .download-area {
+    text-align: center;
+    padding: 32px 20px;
+  }
+  .success-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #00897B, #00BFA5);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 16px;
+    font-size: 28px;
+  }
+  .download-area h3 { font-size: 18px; color: #1E2761; margin-bottom: 8px; }
+  .download-area p  { font-size: 13px; color: #64748B; margin-bottom: 24px; }
+  .btn-download {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 32px;
+    background: #00897B;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 700;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.2s;
+    text-decoration: none;
+  }
+  .btn-download:hover { background: #00695C; transform: translateY(-1px); }
+
+  /* ローディング */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px 20px;
+    gap: 16px;
+  }
+  .spinner {
+    width: 40px; height: 40px;
+    border: 3px solid #E8EEF8;
+    border-top-color: #1E2761;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-text { font-size: 14px; color: #64748B; }
+
+  /* エラー */
+  .error-box {
+    background: #FFF5F5;
+    border: 1.5px solid #FEB2B2;
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 13px;
+    color: #C0392B;
+    margin-bottom: 16px;
+    display: none;
+  }
+
+  /* フッター */
+  footer {
+    text-align: center;
+    padding: 32px;
+    font-size: 12px;
+    color: #94A3B8;
+  }
+
+  /* パネル表示制御 */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* アニメーション */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .fade-up { animation: fadeUp 0.4s ease forwards; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">AI<span>Slide</span> Generator</div>
+  <div class="header-badge">DEMO</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>テーマを入力するだけで<br>プレゼン資料を自動生成</h1>
+    <p>Anthropic Claude AIが構成を考え、PowerPointファイルを自動生成します。<br>外部ツール不要・90秒以内でダウンロードできます。</p>
+  </div>
+
+  <!-- ステップインジケーター -->
+  <div style="display:flex; align-items:center; margin-bottom:28px;">
+    <div class="step active" id="step1">
+      <div class="step-num">1</div>
+      <div class="step-label">情報入力</div>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step" id="step2">
+      <div class="step-num">2</div>
+      <div class="step-label">構成確認</div>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step" id="step3">
+      <div class="step-num">3</div>
+      <div class="step-label">DL完了</div>
+    </div>
+  </div>
+
+  <!-- パネル1：入力フォーム -->
+  <div class="card panel active fade-up" id="panel1">
+    <div class="card-title">STEP 1　プレゼン情報を入力</div>
+
+    <div class="error-box" id="errorBox"></div>
+
+    <div class="field">
+      <label>プレゼンのテーマ <span class="req">必須</span></label>
+      <input type="text" id="theme" placeholder="例：AIを使った事務作業の軽減化">
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>ターゲット <span class="req">必須</span></label>
+        <input type="text" id="target" placeholder="例：30代の経営者">
+      </div>
+      <div class="field">
+        <label>スライド枚数 <span class="req">必須</span></label>
+        <select id="slideCount">
+          <option value="5〜8枚">5〜8枚（コンパクト）</option>
+          <option value="10〜12枚" selected>10〜12枚（標準）</option>
+          <option value="15〜20枚">15〜20枚（詳細）</option>
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <label>目的・ゴール <span class="req">必須</span></label>
+      <input type="text" id="goal" placeholder="例：AI導入の意思決定を促す">
+    </div>
+    <div class="field">
+      <label>伝えたい要点・メモ</label>
+      <textarea id="notes" placeholder="例：コスト削減効果、導入事例、具体的な数字など自由に記載"></textarea>
+    </div>
+
+    <button class="btn-primary" id="btnGenerate" onclick="generateOutline()">
+      スライド構成を生成する →
+    </button>
+  </div>
+
+  <!-- パネル2：ローディング（構成生成中） -->
+  <div class="card panel" id="panelLoading1">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loadingText">AIがスライド構成を考えています...</div>
+    </div>
+  </div>
+
+  <!-- パネル3：構成確認 -->
+  <div class="card panel" id="panel2">
+    <div class="card-title">STEP 2　スライド構成を確認</div>
+    <div class="preview-box" id="outlinePreview"></div>
+    <button class="btn-primary" id="btnDownload" onclick="generatePptx()">
+      この構成でPowerPointを生成する →
+    </button>
+    <button class="btn-secondary" onclick="backToInput()">← 入力に戻る</button>
+  </div>
+
+  <!-- パネル4：pptx生成中 -->
+  <div class="card panel" id="panelLoading2">
+    <div class="loading">
+      <div class="spinner"></div>
+      <div class="loading-text">PowerPointファイルを生成しています...</div>
+    </div>
+  </div>
+
+  <!-- パネル5：完了 -->
+  <div class="card panel" id="panel3">
+    <div class="download-area">
+      <div class="success-icon">✓</div>
+      <h3>生成完了！</h3>
+      <p id="downloadDesc">ファイルを準備しました。下のボタンからダウンロードしてください。</p>
+      <a id="downloadLink" class="btn-download">
+        ⬇ PowerPointをダウンロード
+      </a>
+      <button class="btn-secondary" style="max-width:300px; margin:16px auto 0;" onclick="resetAll()">
+        別のテーマで作る
+      </button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  © 2026 AISlide Generator　／　Powered by Anthropic Claude
+</footer>
+
+<script>
+let outlineText = '';
+let formData = {};
+
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  el.classList.remove('fade-up');
+  void el.offsetWidth;
+  el.classList.add('fade-up');
+}
+
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const s = document.getElementById('step'+i);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    if (i === n) s.classList.add('active');
+  });
+  [1,2].forEach(i => {
+    const l = document.getElementById('line'+i);
+    l.classList.toggle('done', i < n);
+  });
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  box.textContent = msg;
+  box.style.display = 'block';
+}
+
+function hideError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+
+async function generateOutline() {
+  hideError();
+  const theme = document.getElementById('theme').value.trim();
+  const target = document.getElementById('target').value.trim();
+  const goal = document.getElementById('goal').value.trim();
+  const notes = document.getElementById('notes').value.trim();
+  const slideCount = document.getElementById('slideCount').value;
+
+  if (!theme || !target || !goal) {
+    showError('テーマ・ターゲット・目的は必須です。');
+    return;
+  }
+
+  formData = { theme, target, goal, notes, slideCount };
+
+  showPanel('panelLoading1');
+  setStep(2);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(formData)
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || '生成に失敗しました');
+
+    outlineText = data.result;
+    document.getElementById('outlinePreview').textContent = outlineText;
+    showPanel('panel2');
+
+  } catch(e) {
+    showPanel('panel1');
+    setStep(1);
+    showError(e.message);
+  }
+}
+
+async function generatePptx() {
+  showPanel('panelLoading2');
+  setStep(3);
+
+  try {
+    const res = await fetch('/api/download', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...formData, outline: outlineText })
+    });
+
+    if (!res.ok) {
+      const data = await res.json();
+      throw new Error(data.error || 'ファイル生成に失敗しました');
+    }
+
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const filename = `${formData.theme}_スライド.pptx`;
+
+    const link = document.getElementById('downloadLink');
+    link.href = url;
+    link.download = filename;
+
+    document.getElementById('downloadDesc').textContent =
+      `「${formData.theme}」のPowerPointファイルが完成しました。`;
+
+    showPanel('panel3');
+
+    // 自動ダウンロード
+    link.click();
+
+  } catch(e) {
+    showPanel('panel2');
+    setStep(2);
+    alert(e.message);
+  }
+}
+
+function backToInput() {
+  showPanel('panel1');
+  setStep(1);
+  hideError();
+}
+
+function resetAll() {
+  showPanel('panel1');
+  setStep(1);
+  hideError();
+  outlineText = '';
+  formData = {};
+}
+</script>
+
+</body>
+</html>

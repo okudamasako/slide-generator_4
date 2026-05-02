@@ -1,0 +1,9 @@
+{
+  "name": "ai-slide-generator",
+  "version": "1.0.0",
+  "description": "AIスライド自動生成システム",
+  "type": "module",
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  }
+}
