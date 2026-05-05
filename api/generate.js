@@ -49,7 +49,7 @@ ${sourceText}
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20240620', // 互換性の高いSonnet 3.5を指定
+        model: 'claude-3-haiku-20240307', // 最も互換性が高く高速なHaikuを指定
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
       })
