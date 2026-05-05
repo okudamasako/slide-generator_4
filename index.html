@@ -313,35 +313,21 @@
 
   <!-- パネル1：入力フォーム -->
   <div class="card panel active fade-up" id="panel1">
-    <div class="card-title">STEP 1　プレゼン情報を入力</div>
+    <div class="card-title">STEP 1　プレゼン原稿ファイルのアップロード</div>
 
     <div class="error-box" id="errorBox"></div>
 
-    <div class="field">
-      <label>プレゼンのテーマ <span class="req">必須</span></label>
-      <input type="text" id="theme" placeholder="例：AIを使った事務作業の軽減化">
+    <!-- ドラッグ＆ドロップ用エリア -->
+    <div class="upload-area" id="dropZone" style="border: 2px dashed #4FC3F7; border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: background 0.3s; margin-bottom: 24px;">
+      <input type="file" id="fileInput" accept=".txt" style="display: none;" onchange="handleFileSelect(event)">
+      <div style="font-size: 40px; margin-bottom: 12px;">📄</div>
+      <div style="font-size: 16px; font-weight: bold; color: #1E2761; margin-bottom: 8px;">テキストファイルをドラッグ＆ドロップ</div>
+      <div style="font-size: 13px; color: #64748B;">またはクリックしてファイルを選択（.txt形式）</div>
     </div>
-    <div class="row2">
-      <div class="field">
-        <label>ターゲット <span class="req">必須</span></label>
-        <input type="text" id="target" placeholder="例：30代の経営者">
-      </div>
-      <div class="field">
-        <label>スライド枚数 <span class="req">必須</span></label>
-        <select id="slideCount">
-          <option value="5〜8枚">5〜8枚（コンパクト）</option>
-          <option value="10〜12枚" selected>10〜12枚（標準）</option>
-          <option value="15〜20枚">15〜20枚（詳細）</option>
-        </select>
-      </div>
-    </div>
+
     <div class="field">
-      <label>目的・ゴール <span class="req">必須</span></label>
-      <input type="text" id="goal" placeholder="例：AI導入の意思決定を促す">
-    </div>
-    <div class="field">
-      <label>伝えたい要点・メモ</label>
-      <textarea id="notes" placeholder="例：コスト削減効果、導入事例、具体的な数字など自由に記載"></textarea>
+      <label>ファイルがない場合は直接入力</label>
+      <textarea id="sourceText" placeholder="プレゼンの原稿や要点テキストを入力してください（AIがこれを解析して10枚のスライドとして構成します）" style="min-height: 120px; font-size: 14px;"></textarea>
     </div>
 
     <button class="btn-primary" id="btnGenerate" onclick="generateOutline()">
@@ -360,7 +346,8 @@
   <!-- パネル3：構成確認 -->
   <div class="card panel" id="panel2">
     <div class="card-title">STEP 2　スライド構成を確認</div>
-    <div class="preview-box" id="outlinePreview"></div>
+    <p style="font-size: 13px; color: #64748B; margin-bottom: 12px;">AIが以下の構成案を作成しました。テキストエリアで直接修正できます。</p>
+    <textarea class="preview-box" id="outlinePreview" style="width: 100%; border: 1.5px solid #D0D8F0; resize: vertical; min-height: 250px; outline: none; padding: 20px; font-size: 13px; font-family: inherit; line-height: 1.6;"></textarea>
     <button class="btn-primary" id="btnDownload" onclick="generatePptx()">
       この構成でPowerPointを生成する →
     </button>
@@ -399,6 +386,7 @@
 let outlineText = '';
 let formData = {};
 
+// ===== パネルの表示切り替え処理 =====
 function showPanel(id) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
   const el = document.getElementById(id);
@@ -431,35 +419,98 @@ function hideError() {
   document.getElementById('errorBox').style.display = 'none';
 }
 
-async function generateOutline() {
-  hideError();
-  const theme = document.getElementById('theme').value.trim();
-  const target = document.getElementById('target').value.trim();
-  const goal = document.getElementById('goal').value.trim();
-  const notes = document.getElementById('notes').value.trim();
-  const slideCount = document.getElementById('slideCount').value;
+// ===== ドラッグ＆ドロップ処理 =====
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
 
-  if (!theme || !target || !goal) {
-    showError('テーマ・ターゲット・目的は必須です。');
+// クリックでファイル選択ダイアログを開く
+dropZone.addEventListener('click', () => fileInput.click());
+
+// ドラッグが要素に入ったとき（ハイライト表示）
+dropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  dropZone.style.backgroundColor = '#E8EEF8';
+});
+
+// ドラッグが要素から離れたとき（ハイライト解除）
+dropZone.addEventListener('dragleave', (e) => {
+  e.preventDefault();
+  dropZone.style.backgroundColor = 'transparent';
+});
+
+// ファイルがドロップされたときの処理
+dropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  dropZone.style.backgroundColor = 'transparent';
+  if (e.dataTransfer.files.length > 0) {
+    handleFile(e.dataTransfer.files[0]);
+  }
+});
+
+// ファイルダイアログで選択されたときの処理
+function handleFileSelect(e) {
+  if (e.target.files.length > 0) {
+    handleFile(e.target.files[0]);
+  }
+}
+
+// テキストファイルの読み込みとテキストエリアへの反映
+function handleFile(file) {
+  if (!file.name.endsWith('.txt')) {
+    showError('テキストファイル（.txt）を選択してください。');
     return;
   }
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('sourceText').value = e.target.result;
+    hideError();
+  };
+  reader.readAsText(file);
+}
 
-  formData = { theme, target, goal, notes, slideCount };
+// ===== 構成案の生成 =====
+async function generateOutline() {
+  hideError();
+  // テキストエリアから原稿を取得
+  const sourceText = document.getElementById('sourceText').value.trim();
+
+  if (!sourceText) {
+    showError('原稿テキストを入力またはファイルから読み込んでください。');
+    return;
+  }
 
   showPanel('panelLoading1');
   setStep(2);
 
   try {
+    // 構成生成APIへPOST送信
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(formData)
+      body: JSON.stringify({ sourceText })
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || '生成に失敗しました');
 
-    outlineText = data.result;
-    document.getElementById('outlinePreview').textContent = outlineText;
+    // APIからのレスポンスをJSONとしてパース
+    let resultJson;
+    try {
+      // Claudeから返されるのはMarkdownなしのJSON文字列
+      resultJson = JSON.parse(data.result);
+    } catch(err) {
+      throw new Error("AIの応答形式が不正でした。再度お試しください。");
+    }
+
+    // 次のAPIに渡すための情報を保持
+    formData = {
+      theme: resultJson.theme || 'プレゼンテーション',
+      target: resultJson.target || '',
+      goal: resultJson.goal || ''
+    };
+    outlineText = resultJson.outline;
+
+    // プレビュー画面（テキストエリア）に表示
+    document.getElementById('outlinePreview').value = outlineText;
     showPanel('panel2');
 
   } catch(e) {
@@ -469,15 +520,20 @@ async function generateOutline() {
   }
 }
 
+// ===== PPTXファイルの生成とダウンロード =====
 async function generatePptx() {
   showPanel('panelLoading2');
   setStep(3);
 
   try {
+    // ユーザーがプレビュー画面で直接編集したかもしれない構成案を取得
+    const finalOutline = document.getElementById('outlinePreview').value.trim();
+
+    // ダウンロードAPIへPOST送信
     const res = await fetch('/api/download', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...formData, outline: outlineText })
+      body: JSON.stringify({ ...formData, outline: finalOutline })
     });
 
     if (!res.ok) {
@@ -485,6 +541,7 @@ async function generatePptx() {
       throw new Error(data.error || 'ファイル生成に失敗しました');
     }
 
+    // バイナリデータとしてBlobを受け取る
     const blob = await res.blob();
     const url = URL.createObjectURL(blob);
     const filename = `${formData.theme}_スライド.pptx`;
@@ -498,7 +555,7 @@ async function generatePptx() {
 
     showPanel('panel3');
 
-    // 自動ダウンロード
+    // ブラウザのダウンロード機能を自動的に発火させる
     link.click();
 
   } catch(e) {
@@ -508,6 +565,7 @@ async function generatePptx() {
   }
 }
 
+// ===== 各種リセット処理 =====
 function backToInput() {
   showPanel('panel1');
   setStep(1);
@@ -518,6 +576,8 @@ function resetAll() {
   showPanel('panel1');
   setStep(1);
   hideError();
+  document.getElementById('sourceText').value = '';
+  document.getElementById('outlinePreview').value = '';
   outlineText = '';
   formData = {};
 }

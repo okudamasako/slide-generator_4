@@ -1,34 +1,46 @@
 export default async function handler(req, res) {
+  // POSTメソッド以外は許可しない
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { theme, target, goal, notes, slideCount } = req.body;
+  // リクエストボディから原稿テキストを取得
+  const { sourceText } = req.body;
 
-  if (!theme || !target || !goal || !slideCount) {
-    return res.status(400).json({ error: '入力が不足しています' });
+  // 原稿テキストが空の場合はエラーを返す
+  if (!sourceText) {
+    return res.status(400).json({ error: '原稿テキストが入力されていません' });
   }
 
+  // 環境変数からAPIキーを取得
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: 'APIキーが設定されていません' });
   }
 
-  const prompt = `以下の条件でプレゼン資料のスライド構成案を作成してください。
+  // Claudeに渡すシステムプロンプト
+  // 初心者にも分かりやすいように、必ずJSONフォーマットで10枚構成のスライドを作るよう指示しています
+  const prompt = `以下の原稿テキストを元に、10枚構成のプレゼン資料を作成してください。
+出力は以下のJSONフォーマットのみとし、Markdownコードブロックや他のテキストは一切含めないでください。
 
-テーマ：${theme}
-ターゲット：${target}
-目的・ゴール：${goal}
-伝えたい要点：${notes || 'なし'}
-スライド枚数：${slideCount}
+【原稿テキスト】
+${sourceText}
 
-出力形式：
-・スライドごとに「スライド番号：タイトル」「内容の要点（2〜3行）」を記載
-・全体の流れが自然になるよう構成すること
-・日本語で出力すること
-・Markdownの装飾（**や##など）は一切使わず、プレーンテキストで出力すること`;
+【出力JSONフォーマット】
+{
+  "theme": "プレゼンのメインテーマ（全体を総括するタイトル）",
+  "target": "想定されるターゲット層（例：30代の経営者など）",
+  "goal": "プレゼンの目的（例：導入の意思決定を促すなど）",
+  "outline": "スライド 1：〇〇\\n・要点1\\n・要点2\\n\\nスライド 2：〇〇\\n・要点1\\n..."
+}
+
+【outlineフィールドの作成条件】
+・必ず10枚構成のスライドにすること
+・スライドごとに「スライド [数字]：[タイトル]」とし、その下に「・[要点]」を2〜4行記載すること
+・Markdownの装飾（**や##など）は使わずプレーンテキストにすること`;
 
   try {
+    // Anthropic (Claude) APIを呼び出す
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
@@ -37,24 +49,29 @@ export default async function handler(req, res) {
         'anthropic-version': '2023-06-01'
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 1500,
+        model: 'claude-3-5-sonnet-20241022', // 最新の強力なモデルを指定
+        max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
       })
     });
 
     const data = await response.json();
 
+    // APIエラーのハンドリング
     if (!response.ok) {
       if (response.status === 401) return res.status(401).json({ error: 'APIキーが無効です' });
       if (response.status === 429) return res.status(429).json({ error: 'APIの利用上限に達しました' });
       return res.status(500).json({ error: data.error?.message || '生成に失敗しました' });
     }
 
+    // AIの返答を取得
     const result = data.content?.[0]?.text || '';
+    
+    // JSON文字列としてフロントエンドに返す
     return res.status(200).json({ result });
 
   } catch (e) {
+    // ネットワークエラー等のハンドリング
     return res.status(500).json({ error: 'サーバーエラーが発生しました: ' + e.message });
   }
 }
