@@ -57,11 +57,13 @@ ${sourceText}
 
     const data = await response.json();
 
-    // APIエラーのハンドリング
+    // APIエラーのハンドリングを強化（原因を詳しく表示）
     if (!response.ok) {
-      if (response.status === 401) return res.status(401).json({ error: 'APIキーが無効です' });
-      if (response.status === 429) return res.status(429).json({ error: 'APIの利用上限に達しました' });
-      return res.status(500).json({ error: data.error?.message || '生成に失敗しました' });
+      const errorMsg = data.error?.message || JSON.stringify(data.error) || '原因不明のエラー';
+      console.error('Anthropic API Error:', data);
+      return res.status(response.status).json({ 
+        error: `Anthropic APIエラー (${response.status}): ${errorMsg}` 
+      });
     }
 
     // AIの返答を取得
