@@ -1,77 +1,88 @@
 export default async function handler(req, res) {
-  // POSTメソッド以外は許可しない
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  const { theme, target, goal, badge, notes, slideCount, templateAnalysis, framework } = req.body;
+
+  const finalTheme = theme || 'ビジネスプレゼンテーション';
+  const finalTarget = target || '経営層・ステークホルダー';
+  const finalGoal = goal || '意思決定の促進と合意形成';
+  const finalNotes = notes || '';
+  const finalSlideCount = slideCount || '5〜8枚';
+
+  // APIキーの取得（両方チェック）
+  const anthropicKey = (process.env.ANTHROPIC_API_KEY || '').trim();
+  const openaiKey = (process.env.OPENAI_API_KEY || '').trim();
+
+  if (!anthropicKey && !openaiKey) {
+    return res.status(500).json({ error: 'VercelにAPIキー(ANTHROPIC_API_KEY または OPENAI_API_KEY)が設定されていません。' });
   }
 
-  // リクエストボディから原稿テキストを取得
-  const { sourceText } = req.body;
+  // プロンプト作成
+  const lt = (templateAnalysis?.layoutType || '').toLowerCase();
+  let layoutType = 'list';
+  if (lt.includes('ステップ') || lt.includes('step')) layoutType = 'step';
+  else if (lt.includes('カード') || lt.includes('card')) layoutType = 'card';
+  else if (lt.includes('ハブ') || lt.includes('hub')) layoutType = 'hub';
+  else if (lt.includes('フロー') || lt.includes('flow')) layoutType = 'flow';
+  else if (lt.includes('比較') || lt.includes('compare') || lt.includes('as-is')) layoutType = 'compare';
 
-  // 原稿テキストが空の場合はエラーを返す
-  if (!sourceText) {
-    return res.status(400).json({ error: '原稿テキストが入力されていません' });
-  }
+  const layoutInstructions = {
+    step: '【ステップ型】4ステップの工程として記載。',
+    card: '【カード型】3つの並列な施策として記載。',
+    hub: '【ハブ型】中心テーマと4つの要素として記載。',
+    flow: '【フロー型】原因→結果の流れで3行記載。',
+    compare: '【比較型】現状(As-Is)と改善後(To-Be)を対比して記載。',
+    list: '【リスト型】項目と説明のセットで3つ記載。'
+  };
 
-  // 環境変数からAPIキーを取得
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return res.status(500).json({ error: 'APIキーが設定されていません' });
-  }
-
-  // Claudeに渡すシステムプロンプト
-  // 初心者にも分かりやすいように、必ずJSONフォーマットで10枚構成のスライドを作るよう指示しています
-  const prompt = `以下の原稿テキストを元に、10枚構成のプレゼン資料を作成してください。
-出力は以下のJSONフォーマットのみとし、Markdownコードブロックや他のテキストは一切含めないでください。
-
-【原稿テキスト】
-${sourceText}
-
-【出力JSONフォーマット】
-{
-  "theme": "プレゼンのメインテーマ（全体を総括するタイトル）",
-  "target": "想定されるターゲット層（例：30代の経営者など）",
-  "goal": "プレゼンの目的（例：導入の意思決定を促すなど）",
-  "outline": "スライド 1：〇〇\\n・要点1\\n・要点2\\n\\nスライド 2：〇〇\\n・要点1\\n..."
-}
-
-【outlineフィールドの作成条件】
-・必ず10枚構成のスライドにすること
-・スライドごとに「スライド [数字]：[タイトル]」とし、その下に「・[要点]」を2〜4行記載すること
-・Markdownの装飾（**や##など）は使わずプレーンテキストにすること`;
+  const prompt = `プレゼン資料の構成案を日本語で作成してください。
+テーマ：${finalTheme}
+内容：${finalNotes}
+目的：${finalGoal}
+スライド枚数：${finalSlideCount}
+指示：${layoutInstructions[layoutType] || layoutInstructions.list}
+ルール：必ず「スライド1：タイトル」から始め、各スライドの内容を箇条書きで出力すること。`;
 
   try {
-    // Anthropic (Claude) APIを呼び出す
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01'
-      },
-      body: JSON.stringify({
-        model: 'claude-3-5-sonnet-20241022', // 最新の強力なモデルを指定
-        max_tokens: 2000,
-        messages: [{ role: 'user', content: prompt }]
-      })
-    });
-
-    const data = await response.json();
-
-    // APIエラーのハンドリング
-    if (!response.ok) {
-      if (response.status === 401) return res.status(401).json({ error: 'APIキーが無効です' });
-      if (response.status === 429) return res.status(429).json({ error: 'APIの利用上限に達しました' });
-      return res.status(500).json({ error: data.error?.message || '生成に失敗しました' });
+    // OpenAIが設定されている場合を優先（動作が安定しているため）
+    if (openaiKey) {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${openaiKey}` },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.7
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(`OpenAI Error: ${data.error?.message || 'Unknown'}`);
+      return res.status(200).json({ result: data.choices[0].message.content });
     }
 
-    // AIの返答を取得
-    const result = data.content?.[0]?.text || '';
-    
-    // JSON文字列としてフロントエンドに返す
-    return res.status(200).json({ result });
-
+    // Anthropicを使用する場合
+    else {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01'
+        },
+        body: JSON.stringify({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 2000,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const detail = data.error ? `[${data.error.type}] ${data.error.message}` : '不明なエラー';
+        throw new Error(`Anthropic Error: ${detail}`);
+      }
+      return res.status(200).json({ result: data.content[0].text });
+    }
   } catch (e) {
-    // ネットワークエラー等のハンドリング
-    return res.status(500).json({ error: 'サーバーエラーが発生しました: ' + e.message });
+    return res.status(500).json({ error: e.message });
   }
 }
