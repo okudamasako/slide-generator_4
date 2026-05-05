@@ -1,3 +1,5 @@
+import PptxGenJS from 'pptxgenjs';
+
 const C = {
   primary: "0F172A", // ミッドナイトブルー
   accent:  "38BDF8", // スカイブルー
