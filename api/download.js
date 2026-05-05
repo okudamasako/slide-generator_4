@@ -1,15 +1,12 @@
 import PptxGenJS from 'pptxgenjs';
 
 const C = {
-  navy:    "1E2761",
-  accent:  "4FC3F7",
-  green:   "00897B",
-  red:     "EF5350",
-  white:   "FFFFFF",
-  lightBg: "F0F4FF",
-  darkBg:  "0D1B4B",
-  gray:    "64748B",
-  iceBlue: "CADCFC",
+  primary: "0F172A", // ミッドナイトブルー（信頼感）
+  accent:  "38BDF8", // スカイブルー（先進性）
+  gold:    "E2B808", // ゴールド（高級感）
+  text:    "1E293B", // 濃いグレー（可読性）
+  lightBg: "F8FAFC", // 薄いグレー背景
+  white:   "FFFFFF"
 };
 
 function parseOutline(outline) {
@@ -37,102 +34,118 @@ function buildPptx(theme, target, goal, slides) {
   pres.layout = 'LAYOUT_16x9';
   pres.title = theme;
 
-  // ========== タイトルスライド ==========
+  // ========== タイトルスライド (プレミアム) ==========
   const s0 = pres.addSlide();
-  s0.background = { color: C.darkBg };
+  s0.background = { color: C.primary };
 
-  s0.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 0.18, h: 5.625,
-    fill: { color: C.accent }
-  });
-  s0.addText('AI SLIDE GENERATOR', {
-    x: 0.5, y: 0.8, w: 9, h: 0.4,
-    fontSize: 10, color: C.iceBlue, charSpacing: 6,
+  // 背景のアクセント図形
+  s0.addShape(pres.ShapeType.rect, { x: 6.5, y: 0, w: 3.5, h: 5.625, fill: { color: "1E293B" } });
+  s0.addShape(pres.ShapeType.triangle, { x: 6.0, y: 1.5, w: 1.0, h: 1.0, fill: { color: C.gold }, flipH: true, rotate: 45 });
+
+  s0.addText('STRATEGIC PROPOSAL', {
+    x: 0.5, y: 0.8, w: 6, h: 0.4,
+    fontSize: 12, color: C.accent, charSpacing: 4, bold: true,
     fontFace: 'Arial', margin: 0
   });
+
   s0.addText(theme, {
-    x: 0.5, y: 1.4, w: 6.5, h: 2.0,
-    fontSize: 36, color: C.white, bold: true,
-    fontFace: 'Arial', margin: 0
-  });
-  s0.addText(`対象：${target}　／　目的：${goal}`, {
-    x: 0.5, y: 3.6, w: 9, h: 0.5,
-    fontSize: 14, color: C.iceBlue,
-    fontFace: 'Arial', margin: 0
+    x: 0.5, y: 1.3, w: 7.5, h: 2.2,
+    fontSize: 42, color: C.white, bold: true,
+    fontFace: 'Arial', margin: 0,
+    animate: { type: 'fade', delay: 300 }
   });
 
-  // ========== コンテンツスライド ==========
+  s0.addShape(pres.ShapeType.rect, { x: 0.5, y: 3.6, w: 1.2, h: 0.05, fill: { color: C.gold } });
+
+  s0.addText(`Target: ${target}\nGoal: ${goal}`, {
+    x: 0.5, y: 3.9, w: 6, h: 1.2,
+    fontSize: 14, color: "94A3B8",
+    fontFace: 'Arial', margin: 0,
+    animate: { type: 'slide', direction: 'l', delay: 800 }
+  });
+
+  // ========== コンテンツスライド (プレミアム) ==========
   slides.forEach((slide, idx) => {
     const s = pres.addSlide();
     s.background = { color: C.lightBg };
 
-    // ヘッダーバー
-    s.addShape(pres.ShapeType.rect, {
-      x: 0, y: 0, w: 10, h: 1.0,
-      fill: { color: C.navy }
+    // ヘッダーバーのデザイン
+    s.addShape(pres.ShapeType.rect, { x: 0, y: 0, w: 10, h: 0.8, fill: { color: C.primary } });
+    s.addShape(pres.ShapeType.rect, { x: 0, y: 0.8, w: 10, h: 0.04, fill: { color: C.gold } });
+
+    // スライド番号
+    s.addText(`${String(idx + 1).padStart(2, '0')}`, {
+      x: 8.8, y: 0.2, w: 1, h: 0.4,
+      fontSize: 18, color: C.accent, bold: true, align: 'right',
+      fontFace: 'Arial'
     });
-    s.addText(`${idx + 1} / ${slides.length}`, {
-      x: 0.4, y: 0.05, w: 2, h: 0.35,
-      fontSize: 10, color: C.iceBlue, charSpacing: 4,
-      fontFace: 'Arial', margin: 0
-    });
+
+    // スライドタイトル
     s.addText(slide.title, {
-      x: 0.4, y: 0.35, w: 9.2, h: 0.58,
-      fontSize: 22, color: C.white, bold: true,
-      fontFace: 'Arial', margin: 0
+      x: 0.4, y: 0.15, w: 8, h: 0.5,
+      fontSize: 24, color: C.white, bold: true,
+      fontFace: 'Arial',
+      animate: { type: 'fade', delay: 200 }
     });
 
     // コンテンツエリア
     if (slide.points.length > 0) {
-      const cardH = Math.min(3.8, 0.7 * slide.points.length + 0.8);
+      // メインカード
       s.addShape(pres.ShapeType.rect, {
-        x: 0.4, y: 1.2, w: 9.2, h: cardH,
+        x: 0.5, y: 1.2, w: 9.0, h: 4.0,
         fill: { color: C.white },
-        shadow: { type: 'outer', blur: 8, offset: 2, angle: 135, color: '000000', opacity: 0.08 }
-      });
-      s.addShape(pres.ShapeType.rect, {
-        x: 0.4, y: 1.2, w: 0.12, h: cardH,
-        fill: { color: C.accent }
+        line: { color: "E2E8F0", width: 1 },
+        shadow: { type: 'outer', blur: 15, offset: 5, angle: 90, color: '000000', opacity: 0.05 }
       });
 
-      const textItems = slide.points.map((p, pi) => ({
-        text: `・${p}`,
-        options: {
-          breakLine: pi < slide.points.length - 1,
-          fontSize: 15,
-          color: '1A1A1A',
+      // 左側のアクセントライン
+      s.addShape(pres.ShapeType.rect, { x: 0.5, y: 1.2, w: 0.1, h: 4.0, fill: { color: C.primary } });
+
+      // 箇条書き（アニメーション付き）
+      slide.points.forEach((p, pi) => {
+        const yPos = 1.5 + (pi * 0.7);
+        // 行番号アイコン風
+        s.addShape(pres.ShapeType.rect, { x: 0.85, y: yPos + 0.1, w: 0.08, h: 0.08, fill: { color: C.gold }, rotate: 45 });
+        
+        s.addText(p, {
+          x: 1.1, y: yPos, w: 8.2, h: 0.6,
+          fontSize: 18, color: C.text,
           fontFace: 'Arial',
-        }
-      }));
-      s.addText(textItems, {
-        x: 0.7, y: 1.3, w: 8.8, h: cardH - 0.2,
-        valign: 'middle', margin: 0.15,
-        paraSpaceAfter: 8
+          valign: 'top',
+          animate: { type: 'slide', direction: 'l', delay: 400 + (pi * 150) }
+        });
       });
     }
+
+    // フッターの装飾
+    s.addText('© 2026 NEXT GEN AI SOLUTIONS | CONFIDENTIAL', {
+      x: 0.5, y: 5.3, w: 9, h: 0.2,
+      fontSize: 8, color: "94A3B8", align: 'center', charSpacing: 2
+    });
   });
 
-  // ========== まとめスライド ==========
+  // ========== まとめスライド (プレミアム) ==========
   const sEnd = pres.addSlide();
-  sEnd.background = { color: C.darkBg };
-  sEnd.addShape(pres.ShapeType.rect, {
-    x: 0, y: 0, w: 0.18, h: 5.625,
-    fill: { color: C.green }
+  sEnd.background = { color: C.primary };
+
+  sEnd.addShape(pres.ShapeType.rect, { x: 0, y: 2.2, w: 10, h: 1.2, fill: { color: "1E293B" } });
+  sEnd.addShape(pres.ShapeType.rect, { x: 0, y: 2.2, w: 10, h: 0.02, fill: { color: C.gold } });
+  sEnd.addShape(pres.ShapeType.rect, { x: 0, y: 3.4, w: 10, h: 0.02, fill: { color: C.gold } });
+
+  sEnd.addText('THANK YOU FOR YOUR ATTENTION', {
+    x: 0, y: 1.5, w: 10, h: 0.4,
+    fontSize: 14, color: C.accent, align: 'center', charSpacing: 6, bold: true
   });
-  sEnd.addText('THANK YOU', {
-    x: 0.5, y: 0.8, w: 9, h: 0.4,
-    fontSize: 10, color: C.iceBlue, charSpacing: 8,
-    fontFace: 'Arial', margin: 0
+
+  sEnd.addText('ご清聴ありがとうございました', {
+    x: 0, y: 2.4, w: 10, h: 0.8,
+    fontSize: 32, color: C.white, bold: true, align: 'center',
+    fontFace: 'Arial'
   });
-  sEnd.addText(theme, {
-    x: 0.5, y: 1.4, w: 9, h: 1.8,
-    fontSize: 32, color: C.white, bold: true,
-    fontFace: 'Arial', margin: 0
-  });
-  sEnd.addText('ご質問・お問い合わせはお気軽にどうぞ。', {
-    x: 0.5, y: 3.3, w: 9, h: 0.6,
-    fontSize: 15, color: C.iceBlue,
-    fontFace: 'Arial', margin: 0
+
+  sEnd.addText('Contact: Strategic Solutions Team', {
+    x: 0, y: 4.2, w: 10, h: 0.4,
+    fontSize: 12, color: "94A3B8", align: 'center'
   });
 
   return pres;
