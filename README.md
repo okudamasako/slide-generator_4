@@ -1,54 +1,50 @@
 # AIスライド自動生成システム
 
-テーマ・ターゲット・目的を入力するだけで、PowerPoint（.pptx）を自動生成するWebアプリです。
+テーマ・ターゲット・目的を入力するだけで、
+PowerPoint（.pptx）を自動生成できるWebアプリです。
+
+Claude APIを利用してスライド構成を生成し、
+PowerPoint形式でダウンロードできます。
+
+## 主な機能
+
+- AIによるスライド構成生成
+- PowerPoint（.pptx）自動生成
+- テーマ・ターゲット別の構成最適化
+- ブラウザ上で完結
+- PowerPointファイルのダウンロード対応
+
+## 使用技術
+
+- HTML
+- JavaScript
+- Claude API
+- PptxGenJS
+- Vercel
 
 ## ファイル構成
 
-```
+```text
 /
-├── index.html          ← フロントエンド
+├── index.html
 ├── api/
-│   ├── generate.js     ← スライド構成生成API（Claude API呼び出し）
-│   └── download.js     ← pptxファイル生成API
+│   ├── generate.js
+│   └── download.js
 ├── package.json
 └── README.md
 ```
 
-## デプロイ手順
+## デモ
 
-### 1. GitHubにリポジトリを作成
-
-1. GitHub（https://github.com）を開く
-2. 右上の「+」→「New repository」をクリック
-3. Repository name：`ai-slide-generator`（任意）
-4. 「Create repository」をクリック
-5. 上記4ファイルをすべてアップロード（api/フォルダごと）
-
-### 2. Vercelに接続
-
-1. Vercel（https://vercel.com）を開く
-2. 「New Project」をクリック
-3. 作成したGitHubリポジトリを選択
-4. 「Import」をクリック
-
-### 3. 環境変数を設定
-
-Vercelの「Environment Variables」に以下を追加：
-
-| 変数名 | 値 |
-|--------|-----|
-| `ANTHROPIC_API_KEY` | AnthropicのAPIキー |
-
-※ APIキーは https://console.anthropic.com で取得できます。
-
-### 4. デプロイ
-
-「Deploy」をクリック → 完了！
-
-URLが発行されます（例：`https://ai-slide-generator-xxx.vercel.app`）
+[デモサイトはこちら](https://slide-generator-4.vercel.app/)
 
 ## 注意事項
 
-- `.env`ファイルは絶対にGitHubにアップしないこと
-- APIキーはVercelの環境変数にのみ設定すること
-- 商用利用の場合はPptxGenJSのライセンスを確認すること
+- APIキーはGitHubへアップロードしない
+- 環境変数はVercel側で設定
+- 商用利用時はPptxGenJSライセンス確認推奨
+
+## 補足
+
+AIを活用したスライド生成・PowerPoint自動出力システムとして、
+実験・運用しているプロジェクトです。
